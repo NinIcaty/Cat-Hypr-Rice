@@ -20,21 +20,6 @@ DEFAULT_ANIMATION_SPEEDS = {
     "workspaces": 5.0,
 }
 
-SHORTCUT_TARGETS = {
-    "Open terminal": ("bind", "exec", "$terminal"),
-    "Open file manager": ("bind", "exec", "$fileManager"),
-    "Open app launcher": ("bind", "exec", "$menu"),
-    "Open quick runner": ("bind", "exec", "$quickRunner"),
-    "Close active window": ("bind", "killactive", ""),
-    "Toggle floating": ("bind", "togglefloating", ""),
-    "Fullscreen": ("bind", "fullscreen", ""),
-    "Lock screen": (
-        "bind",
-        "exec",
-        "hyprlock --config ~/.config/hypr-material3/hypr/hyprlock.conf",
-    ),
-}
-
 APP_VARIABLES = {
     "Terminal": "$terminal",
     "File manager": "$fileManager",
@@ -56,6 +41,7 @@ ACCENT_COLORS = {
 @dataclass
 class ConfigPaths:
     root: Path
+    data_root: Path
     hyprland: Path
     theme: Path
     apps: Path
@@ -66,16 +52,48 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parent
 
 
+def detect_data_root() -> Path:
+    env_root = os.environ.get("PYPRLAND_DATA_DIR")
+    if env_root:
+        return Path(env_root).expanduser()
+    return repo_root()
+
+
+def build_shortcut_targets(config_root: Path) -> dict[str, tuple[str, str, str]]:
+    return {
+        "Open terminal": ("bind", "exec", "$terminal"),
+        "Open file manager": ("bind", "exec", "$fileManager"),
+        "Open app launcher": ("bind", "exec", "$menu"),
+        "Open quick runner": ("bind", "exec", "$quickRunner"),
+        "Close active window": ("bind", "killactive", ""),
+        "Toggle floating": ("bind", "togglefloating", ""),
+        "Fullscreen": ("bind", "fullscreen", ""),
+        "Lock screen": (
+            "bind",
+            "exec",
+            f"hyprlock --config {config_root}/hypr/hyprlock.conf",
+        ),
+    }
+
+
 def detect_config_paths() -> ConfigPaths:
     xdg_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")).expanduser()
-    installed_root = xdg_home / "hypr-material3"
-    if (installed_root / "hypr" / "hyprland.conf").exists():
-        root = installed_root
-    else:
-        root = repo_root() / "config"
+    env_root = os.environ.get("PYPRLAND_CONFIG_DIR")
+    candidates = []
+    if env_root:
+        candidates.append(Path(env_root).expanduser())
+    candidates.extend(
+        [
+            xdg_home / "pyprland",
+            xdg_home / "hypr-material3",
+            repo_root() / "config",
+        ]
+    )
+    root = next((candidate for candidate in candidates if (candidate / "hypr" / "hyprland.conf").exists()), repo_root() / "config")
     hypr_dir = root / "hypr"
     return ConfigPaths(
         root=root,
+        data_root=detect_data_root(),
         hyprland=hypr_dir / "hyprland.conf",
         theme=hypr_dir / "theme.conf",
         apps=hypr_dir / "apps.conf",
@@ -238,9 +256,9 @@ def parse_animation_enabled(text: str) -> bool:
     return not match or match.group(1) == "true"
 
 
-def parse_shortcuts(text: str) -> dict[str, str]:
+def parse_shortcuts(text: str, shortcut_targets: dict[str, tuple[str, str, str]]) -> dict[str, str]:
     shortcuts: dict[str, str] = {}
-    for label, (bind_type, action, target) in SHORTCUT_TARGETS.items():
+    for label, (bind_type, action, target) in shortcut_targets.items():
         for line in text.splitlines():
             parsed = parse_bind_line(line)
             if not parsed:
@@ -273,10 +291,14 @@ def split_combo_string(combo: str) -> tuple[str, str]:
     return (" ".join(parts[:-1]), parts[-1])
 
 
-def set_shortcuts(text: str, shortcuts: dict[str, str]) -> str:
+def set_shortcuts(
+    text: str,
+    shortcuts: dict[str, str],
+    shortcut_targets: dict[str, tuple[str, str, str]],
+) -> str:
     result = text
     for label, combo in shortcuts.items():
-        bind_type, action, target = SHORTCUT_TARGETS[label]
+        bind_type, action, target = shortcut_targets[label]
         mods, key = split_combo_string(combo)
         value = f", {target}" if target else ","
         replacement = f"{bind_type} = {mods}, {key}, {action}{value}" if mods else f"{bind_type} = , {key}, {action}{value}"
@@ -323,6 +345,7 @@ class SettingsApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.paths = detect_config_paths()
+        self.shortcut_targets = build_shortcut_targets(self.paths.root)
         self.root.title("Pyprland Settings")
         self.root.geometry("980x720")
         self.root.minsize(880, 640)
@@ -343,7 +366,7 @@ class SettingsApp:
         self.primary_color_var = tk.StringVar()
         self.secondary_color_var = tk.StringVar()
         self.app_vars = {label: tk.StringVar() for label in APP_VARIABLES}
-        self.shortcut_vars = {label: tk.StringVar() for label in SHORTCUT_TARGETS}
+        self.shortcut_vars = {label: tk.StringVar() for label in self.shortcut_targets}
 
         self.build_ui()
         self.load()
@@ -541,7 +564,7 @@ class SettingsApp:
         for label, variable_name in APP_VARIABLES.items():
             self.app_vars[label].set(parse_variable(apps_text, variable_name))
 
-        shortcuts = parse_shortcuts(keybinds_text)
+        shortcuts = parse_shortcuts(keybinds_text, self.shortcut_targets)
         for label, variable in self.shortcut_vars.items():
             variable.set(shortcuts.get(label, ""))
 
@@ -595,7 +618,7 @@ class SettingsApp:
         for label, variable_name in APP_VARIABLES.items():
             apps_text = set_variable(apps_text, variable_name, self.app_vars[label].get().strip())
 
-        keybinds_text = set_shortcuts(keybinds_text, shortcut_values)
+        keybinds_text = set_shortcuts(keybinds_text, shortcut_values, self.shortcut_targets)
 
         write_text(self.paths.hyprland, hyprland_text)
         write_text(self.paths.theme, theme_text)

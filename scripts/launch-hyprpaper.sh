@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}/hypr-material3"
+CONFIG_ROOT="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
 WALLPAPER_DIR="$CONFIG_ROOT/wallpapers"
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
-TMP_CONF="$RUNTIME_DIR/hypr-material3-hyprpaper.conf"
+TMP_CONF="$RUNTIME_DIR/pyprland-hyprpaper.conf"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1

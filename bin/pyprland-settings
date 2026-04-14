@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DATA_DIR="${PYPRLAND_DATA_DIR:-/usr/share/pyprland-desktop}"
+CONFIG_DIR="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
+
+export PYPRLAND_DATA_DIR="$DATA_DIR"
+export PYPRLAND_CONFIG_DIR="$CONFIG_DIR"
+
+python3 "$DATA_DIR/scripts/bootstrap_config.py" --data-dir "$DATA_DIR" --config-dir "$CONFIG_DIR"
+exec python3 "$DATA_DIR/settings_app.py"

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Pyprland Settings
+Comment=Configure the Pyprland desktop session
+Exec=pyprland-settings
+Terminal=false
+Type=Application
+Categories=Settings;DesktopSettings;

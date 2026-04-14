@@ -20,7 +20,7 @@
   },
 
   "custom/media": {
-    "exec": "~/.config/hypr-material3/scripts/waybar-media.sh",
+    "exec": "@PYPRLAND_DATA_DIR@/scripts/waybar-media.sh",
     "return-type": "json",
     "interval": 2,
     "max-length": 52,
@@ -31,7 +31,7 @@
   },
 
   "custom/notifications": {
-    "exec": "~/.config/hypr-material3/scripts/waybar-notifications.sh",
+    "exec": "@PYPRLAND_DATA_DIR@/scripts/waybar-notifications.sh",
     "return-type": "json",
     "interval": 5,
     "tooltip": false,
@@ -45,7 +45,7 @@
   },
 
   "custom/battery": {
-    "exec": "~/.config/hypr-material3/scripts/battery-percent.sh --json",
+    "exec": "@PYPRLAND_DATA_DIR@/scripts/battery-percent.sh --json",
     "return-type": "json",
     "interval": 30,
     "tooltip": true

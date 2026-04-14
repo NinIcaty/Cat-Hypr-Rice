@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}/hypr-material3"
+CONFIG_ROOT="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
 CONFIG_FILE="$CONFIG_ROOT/swaync/config.json"
 STYLE_FILE="$CONFIG_ROOT/swaync/style.css"
 
