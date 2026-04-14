@@ -28,6 +28,7 @@ fi
 
 cp -r "$PROJECT_DIR/config/." "$TARGET_ROOT/"
 cp -r "$PROJECT_DIR/scripts" "$TARGET_ROOT/"
+cp "$PROJECT_DIR/main.py" "$TARGET_ROOT/settings_app.py"
 if [ -d "$PROJECT_DIR/wallpapers" ]; then
   mkdir -p "$TARGET_ROOT/wallpapers"
   cp -r "$PROJECT_DIR/wallpapers/." "$TARGET_ROOT/wallpapers/"
@@ -42,6 +43,7 @@ cp "$PROJECT_DIR/config/swaync/config.json" "$SWAYNC_DIR/config.json"
 cp "$PROJECT_DIR/config/swaync/style.css" "$SWAYNC_DIR/style.css"
 
 chmod +x "$TARGET_ROOT/scripts/"*.sh
+chmod +x "$TARGET_ROOT/settings_app.py"
 
 if [ -f "$TARGET_HYPR_CONF" ] && ! grep -Fq "source = $TARGET_ROOT/hypr/hyprland.conf" "$TARGET_HYPR_CONF"; then
   cp "$TARGET_HYPR_CONF" "$TARGET_HYPR_CONF.backup-$BACKUP_SUFFIX"
@@ -74,6 +76,7 @@ printf '  %s\n' "$TARGET_ROOT/anyrun/config.ron"
 printf '  %s\n' "$TARGET_ROOT/rofi/material3.rasi"
 printf '  %s\n' "$TARGET_ROOT/waybar/config.jsonc"
 printf '  %s\n' "$TARGET_ROOT/wallpapers"
+printf '  %s\n' "$TARGET_ROOT/settings_app.py"
 
 if [ "$MISSING" -eq 1 ]; then
   printf '\nInstall completed, but some required apps are missing.\n'

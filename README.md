@@ -9,6 +9,7 @@ This repository contains an installable Material 3-inspired Hyprland setup with:
 - `nautilus` as the file manager
 - `rofi` as a quick app/command runner
 - a separate keybind file so controls are easy to change
+- a local Python settings app for common tweaks
 
 ## Install
 
@@ -22,6 +23,20 @@ After install, edit:
 - `~/.config/hypr-material3/hypr/keybinds.conf`
 - `~/.config/hypr-material3/hypr/apps.conf`
 - put a wallpaper image in `~/.config/hypr-material3/wallpapers/`
+
+Or use the settings app:
+
+```bash
+python3 ~/.config/hypr-material3/settings_app.py
+```
+
+The app can update:
+
+- animation speed and animation enable/disable
+- cursor theme and cursor size
+- active window highlight colors
+- shortcut bindings for common actions
+- the default commands used for the terminal, file manager, launcher, and quick runner
 
 Wallpaper selection:
 
