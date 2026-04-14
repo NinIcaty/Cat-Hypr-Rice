@@ -1,0 +1,59 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 38,
+  "margin-top": 10,
+  "margin-left": 12,
+  "margin-right": 12,
+  "spacing": 10,
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["custom/media"],
+  "modules-right": ["custom/notifications", "tray", "custom/battery", "clock"],
+
+  "hyprland/workspaces": {
+    "active-only": false,
+    "disable-scroll": false,
+    "all-outputs": false,
+    "format": "{name}",
+    "on-scroll-up": "hyprctl dispatch workspace e+1",
+    "on-scroll-down": "hyprctl dispatch workspace e-1"
+  },
+
+  "custom/media": {
+    "exec": "~/.config/hypr-material3/scripts/waybar-media.sh",
+    "return-type": "json",
+    "interval": 2,
+    "max-length": 52,
+    "tooltip": true,
+    "on-click": "playerctl play-pause",
+    "on-click-right": "playerctl next",
+    "on-click-middle": "playerctl previous"
+  },
+
+  "custom/notifications": {
+    "exec": "~/.config/hypr-material3/scripts/waybar-notifications.sh",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": false,
+    "on-click": "swaync-client -t",
+    "on-click-right": "swaync-client -C"
+  },
+
+  "tray": {
+    "icon-size": 14,
+    "spacing": 8
+  },
+
+  "custom/battery": {
+    "exec": "~/.config/hypr-material3/scripts/battery-percent.sh --json",
+    "return-type": "json",
+    "interval": 30,
+    "tooltip": true
+  },
+
+  "clock": {
+    "interval": 1,
+    "format": "  {:%a %d %b  %H:%M}",
+    "tooltip": false
+  }
+}

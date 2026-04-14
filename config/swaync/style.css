@@ -1,0 +1,187 @@
+* {
+  font-family: "JetBrainsMono Nerd Font", "FiraCode Nerd Font", monospace;
+  font-size: 13px;
+}
+
+window,
+.blank-window,
+.floating-notifications,
+.control-center-list-placeholder {
+  background: transparent;
+}
+
+:root {
+  --surface: rgba(24, 24, 37, 0.72);
+  --surface-strong: rgba(30, 30, 46, 0.78);
+  --outline: rgba(202, 214, 255, 0.30);
+  --text: #cdd6f4;
+  --muted: #a6adc8;
+  --primary: #cad6ff;
+  --secondary: #89dceb;
+  --accent: #f9e2af;
+}
+
+.notification-row,
+.control-center,
+.control-center-list,
+.notification,
+.widget-dnd,
+.widget-mpris,
+.widget-title {
+  background: transparent;
+}
+
+.notification-row {
+  margin: 10px 12px 0;
+}
+
+.notification {
+  background: linear-gradient(180deg, rgba(37, 37, 58, 0.78), rgba(24, 24, 37, 0.74));
+  color: var(--text);
+  border: 1px solid var(--outline);
+  border-radius: 24px;
+  padding: 12px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+}
+
+.notification-content {
+  margin: 6px 0;
+}
+
+.summary {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.body,
+.time,
+.notification-action {
+  color: var(--muted);
+}
+
+.notification-default-action {
+  border-radius: 18px;
+  padding: 6px;
+}
+
+.notification-default-action:hover,
+.notification-action:hover {
+  background: rgba(202, 214, 255, 0.08);
+}
+
+.close-button {
+  background: rgba(243, 139, 168, 0.14);
+  color: #f38ba8;
+  border-radius: 999px;
+  margin: 6px;
+}
+
+.close-button:hover {
+  background: rgba(243, 139, 168, 0.22);
+}
+
+.control-center {
+  margin: 10px 12px 12px 0;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(17, 17, 27, 0.74), rgba(24, 24, 37, 0.68));
+  border: 1px solid rgba(202, 214, 255, 0.24);
+  border-radius: 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+}
+
+.control-center .notification-row {
+  margin: 0 0 10px;
+}
+
+.widget-title,
+.widget-dnd,
+.widget-mpris {
+  background: linear-gradient(180deg, rgba(37, 37, 58, 0.68), rgba(24, 24, 37, 0.7));
+  color: var(--text);
+  border: 1px solid var(--outline);
+  border-radius: 24px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.widget-title {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.widget-title button,
+.widget-dnd switch {
+  border-radius: 14px;
+}
+
+.widget-title button {
+  background: rgba(137, 220, 235, 0.2);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+}
+
+.widget-title button:hover {
+  background: rgba(137, 220, 235, 0.32);
+}
+
+.widget-dnd {
+  color: var(--accent);
+}
+
+.widget-dnd switch {
+  background: rgba(108, 112, 134, 0.35);
+}
+
+.widget-dnd switch:checked {
+  background: rgba(249, 226, 175, 0.55);
+}
+
+.widget-dnd slider {
+  background: #11111b;
+  border-radius: 999px;
+}
+
+.widget-mpris {
+  color: var(--text);
+}
+
+.widget-mpris-player {
+  background: rgba(17, 17, 27, 0.28);
+  border-radius: 18px;
+  padding: 10px;
+}
+
+.widget-mpris .widget-mpris-title {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.widget-mpris .widget-mpris-subtitle,
+.widget-mpris .widget-mpris-album-art + box label {
+  color: var(--muted);
+}
+
+.notification-action {
+  background: rgba(202, 214, 255, 0.06);
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+
+.notification-action:not(:only-child) {
+  margin-top: 8px;
+}
+
+progressbar,
+trough {
+  border-radius: 999px;
+  min-height: 8px;
+}
+
+trough {
+  background: rgba(108, 112, 134, 0.22);
+}
+
+progress {
+  background: linear-gradient(90deg, #89dceb, #cad6ff);
+}

@@ -1,0 +1,89 @@
+* {
+    bg: #1e1e2e;
+    bg-alt: #181825;
+    fg: #cdd6f4;
+    muted: #9399b2;
+    primary: #cad6ff;
+    secondary: #89dceb;
+    surface: #313244;
+    selected: #45475a;
+    border-radius: 20px;
+    font: "JetBrainsMono Nerd Font 13";
+}
+
+window {
+    transparency: "real";
+    background-color: rgba(30, 30, 46, 0.94);
+    border: 2px;
+    border-color: @primary;
+    border-radius: @border-radius;
+    width: 44%;
+    padding: 16px;
+}
+
+mainbox {
+    background-color: transparent;
+    spacing: 10px;
+}
+
+inputbar {
+    children: [ prompt, entry ];
+    background-color: @bg-alt;
+    border-radius: 16px;
+    padding: 10px 12px;
+    spacing: 8px;
+}
+
+prompt {
+    text-color: @secondary;
+    padding: 0 4px 0 0;
+}
+
+entry {
+    text-color: @fg;
+    placeholder: "Run apps, commands, or nvim <file>";
+    placeholder-color: @muted;
+}
+
+listview {
+    lines: 8;
+    columns: 1;
+    fixed-height: false;
+    background-color: transparent;
+    spacing: 6px;
+    scrollbar: false;
+}
+
+element {
+    background-color: @surface;
+    text-color: @fg;
+    border-radius: 16px;
+    padding: 10px 12px;
+}
+
+element selected {
+    background-color: @selected;
+    text-color: @fg;
+    border: 1px;
+    border-color: @secondary;
+}
+
+element-icon {
+    size: 1.0em;
+    margin: 0 8px 0 0;
+}
+
+element-text {
+    text-color: inherit;
+    vertical-align: 0.5;
+}
+
+message {
+    background-color: @bg-alt;
+    border-radius: 14px;
+    padding: 8px 10px;
+}
+
+textbox {
+    text-color: @muted;
+}

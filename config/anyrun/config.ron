@@ -1,0 +1,14 @@
+Config(
+  width: Absolute(700),
+  y: Absolute(220),
+  hide_icons: false,
+  ignore_exclusive_zones: false,
+  close_on_click: true,
+  hide_plugin_info: true,
+  show_results_immediately: true,
+  max_entries: 8,
+  plugins: [
+    "libapplications.so",
+    "libshell.so",
+  ],
+)
