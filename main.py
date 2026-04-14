@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 import tkinter as tk
-from tkinter import colorchooser, messagebox, ttk
+from tkinter import colorchooser, filedialog, messagebox, ttk
 from typing import Callable
 
 
@@ -43,9 +44,11 @@ class ConfigPaths:
     root: Path
     data_root: Path
     hyprland: Path
+    hyprlock: Path
     theme: Path
     apps: Path
     keybinds: Path
+    wallpaper_dir: Path
 
 
 def repo_root() -> Path:
@@ -53,7 +56,7 @@ def repo_root() -> Path:
 
 
 def detect_data_root() -> Path:
-    env_root = os.environ.get("PYPRLAND_DATA_DIR")
+    env_root = os.environ.get("HYPRCAT_DATA_DIR") or os.environ.get("PYPRLAND_DATA_DIR")
     if env_root:
         return Path(env_root).expanduser()
     return repo_root()
@@ -78,12 +81,13 @@ def build_shortcut_targets(config_root: Path) -> dict[str, tuple[str, str, str]]
 
 def detect_config_paths() -> ConfigPaths:
     xdg_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")).expanduser()
-    env_root = os.environ.get("PYPRLAND_CONFIG_DIR")
+    env_root = os.environ.get("HYPRCAT_CONFIG_DIR") or os.environ.get("PYPRLAND_CONFIG_DIR")
     candidates = []
     if env_root:
         candidates.append(Path(env_root).expanduser())
     candidates.extend(
         [
+            xdg_home / "hyprcat",
             xdg_home / "pyprland",
             xdg_home / "hypr-material3",
             repo_root() / "config",
@@ -95,9 +99,11 @@ def detect_config_paths() -> ConfigPaths:
         root=root,
         data_root=detect_data_root(),
         hyprland=hypr_dir / "hyprland.conf",
+        hyprlock=hypr_dir / "hyprlock.conf",
         theme=hypr_dir / "theme.conf",
         apps=hypr_dir / "apps.conf",
         keybinds=hypr_dir / "keybinds.conf",
+        wallpaper_dir=(root / "wallpapers") if (root / "wallpapers").exists() else detect_data_root() / "wallpapers",
     )
 
 
@@ -211,6 +217,17 @@ def set_border_colors(text: str, active_start: str, active_end: str, inactive: s
         r"^\s*col\.inactive_border\s*=.+$",
         f"    col.inactive_border = {hex_to_hypr_rgba(inactive)}",
     )
+
+
+def parse_wallpaper_path(text: str) -> str:
+    match = re.search(r"^\s*path\s*=\s*(.+)$", text, flags=re.MULTILINE)
+    if not match:
+        raise ValueError("Wallpaper path not found in hyprlock config.")
+    return match.group(1).strip()
+
+
+def set_wallpaper_path(text: str, value: str) -> str:
+    return replace_or_append(text, r"^\s*path\s*=.+$", f"    path = {value}")
 
 
 def parse_theme_color(text: str, variable: str) -> str:
@@ -341,12 +358,21 @@ def run_hyprctl(*args: str) -> None:
     subprocess.run(["hyprctl", *args], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def apply_wallpaper(data_root: Path) -> None:
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return
+    launcher = data_root / "scripts" / "launch-hyprpaper.sh"
+    if not launcher.exists():
+        return
+    subprocess.run([str(launcher)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 class SettingsApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.paths = detect_config_paths()
         self.shortcut_targets = build_shortcut_targets(self.paths.root)
-        self.root.title("Pyprland Settings")
+        self.root.title("Hyprcat Settings")
         self.root.geometry("980x720")
         self.root.minsize(880, 640)
         self.root.configure(bg="#111318")
@@ -358,6 +384,7 @@ class SettingsApp:
 
         self.animation_enabled_var = tk.BooleanVar()
         self.animation_multiplier_var = tk.DoubleVar()
+        self.wallpaper_var = tk.StringVar()
         self.cursor_theme_var = tk.StringVar()
         self.cursor_size_var = tk.IntVar()
         self.active_start_var = tk.StringVar()
@@ -367,6 +394,7 @@ class SettingsApp:
         self.secondary_color_var = tk.StringVar()
         self.app_vars = {label: tk.StringVar() for label in APP_VARIABLES}
         self.shortcut_vars = {label: tk.StringVar() for label in self.shortcut_targets}
+        self.wallpaper_combo: ttk.Combobox | None = None
 
         self.build_ui()
         self.load()
@@ -379,7 +407,7 @@ class SettingsApp:
 
         header = ttk.Frame(container, style="Card.TFrame", padding=18)
         header.pack(fill="x")
-        ttk.Label(header, text="Pyprland Settings", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(header, text="Hyprcat Settings", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             header,
             text="Tweak the Material 3 Hyprland theme without editing config files by hand.",
@@ -434,46 +462,76 @@ class SettingsApp:
         card = ttk.Frame(parent, style="Card.TFrame", padding=18)
         card.pack(fill="both", expand=True)
 
-        ttk.Label(card, text="Animations", style="Section.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Checkbutton(card, text="Enable animations", variable=self.animation_enabled_var).grid(row=1, column=0, sticky="w", pady=(10, 6))
-        ttk.Label(card, text="Animation speed", style="Field.TLabel").grid(row=2, column=0, sticky="w", pady=(8, 0))
-        ttk.Scale(card, from_=0.4, to=2.5, variable=self.animation_multiplier_var, orient="horizontal").grid(row=3, column=0, sticky="ew", pady=(6, 0))
-        ttk.Label(card, text="0.4x is slower and 2.5x is snappier.", style="Muted.TLabel").grid(row=4, column=0, sticky="w")
+        ttk.Label(card, text="Wallpaper", style="Section.TLabel").grid(row=0, column=0, sticky="w")
+        wallpaper_row = ttk.Frame(card, style="Card.TFrame")
+        wallpaper_row.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        wallpaper_row.columnconfigure(0, weight=1)
+        self.wallpaper_combo = ttk.Combobox(
+            wallpaper_row,
+            textvariable=self.wallpaper_var,
+            state="readonly",
+        )
+        self.wallpaper_combo.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        ttk.Button(
+            wallpaper_row,
+            text="Import…",
+            command=self.import_wallpaper,
+            style="Secondary.TButton",
+        ).grid(row=0, column=1, sticky="e", padx=(0, 8))
+        ttk.Button(
+            wallpaper_row,
+            text="Refresh",
+            command=self.refresh_wallpaper_choices,
+            style="Secondary.TButton",
+        ).grid(row=0, column=2, sticky="e")
+        ttk.Label(
+            card,
+            text="Imported files are copied into the theme wallpaper folder and used for both desktop and lock screen.",
+            style="Muted.TLabel",
+        ).grid(row=2, column=0, sticky="w", pady=(8, 0))
 
-        ttk.Separator(card, orient="horizontal").grid(row=5, column=0, sticky="ew", pady=18)
+        ttk.Separator(card, orient="horizontal").grid(row=3, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Cursor", style="Section.TLabel").grid(row=6, column=0, sticky="w")
+        ttk.Label(card, text="Animations", style="Section.TLabel").grid(row=4, column=0, sticky="w")
+        ttk.Checkbutton(card, text="Enable animations", variable=self.animation_enabled_var).grid(row=5, column=0, sticky="w", pady=(10, 6))
+        ttk.Label(card, text="Animation speed", style="Field.TLabel").grid(row=6, column=0, sticky="w", pady=(8, 0))
+        ttk.Scale(card, from_=0.4, to=2.5, variable=self.animation_multiplier_var, orient="horizontal").grid(row=7, column=0, sticky="ew", pady=(6, 0))
+        ttk.Label(card, text="0.4x is slower and 2.5x is snappier.", style="Muted.TLabel").grid(row=8, column=0, sticky="w")
+
+        ttk.Separator(card, orient="horizontal").grid(row=9, column=0, sticky="ew", pady=18)
+
+        ttk.Label(card, text="Cursor", style="Section.TLabel").grid(row=10, column=0, sticky="w")
         cursor_grid = ttk.Frame(card, style="Card.TFrame")
-        cursor_grid.grid(row=7, column=0, sticky="ew", pady=(10, 0))
+        cursor_grid.grid(row=11, column=0, sticky="ew", pady=(10, 0))
         cursor_grid.columnconfigure(1, weight=1)
         ttk.Label(cursor_grid, text="Theme", style="Field.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 12))
         ttk.Entry(cursor_grid, textvariable=self.cursor_theme_var).grid(row=0, column=1, sticky="ew")
         ttk.Label(cursor_grid, text="Size", style="Field.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=(10, 0))
         ttk.Spinbox(cursor_grid, from_=16, to=64, textvariable=self.cursor_size_var, increment=1).grid(row=1, column=1, sticky="w", pady=(10, 0))
 
-        ttk.Separator(card, orient="horizontal").grid(row=8, column=0, sticky="ew", pady=18)
+        ttk.Separator(card, orient="horizontal").grid(row=12, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Window Highlight", style="Section.TLabel").grid(row=9, column=0, sticky="w")
+        ttk.Label(card, text="Window Highlight", style="Section.TLabel").grid(row=13, column=0, sticky="w")
         colors = ttk.Frame(card, style="Card.TFrame")
-        colors.grid(row=10, column=0, sticky="ew", pady=(10, 0))
+        colors.grid(row=14, column=0, sticky="ew", pady=(10, 0))
         colors.columnconfigure(1, weight=1)
         colors.columnconfigure(3, weight=1)
         self.make_color_field(colors, "Active start", self.active_start_var, 0, 0)
         self.make_color_field(colors, "Active end", self.active_end_var, 1, 0)
         self.make_color_field(colors, "Inactive", self.inactive_border_var, 2, 0)
 
-        ttk.Separator(card, orient="horizontal").grid(row=11, column=0, sticky="ew", pady=18)
+        ttk.Separator(card, orient="horizontal").grid(row=15, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Theme Accent", style="Section.TLabel").grid(row=12, column=0, sticky="w")
+        ttk.Label(card, text="Theme Accent", style="Section.TLabel").grid(row=16, column=0, sticky="w")
         accent_row = ttk.Frame(card, style="Card.TFrame")
-        accent_row.grid(row=13, column=0, sticky="ew", pady=(10, 0))
+        accent_row.grid(row=17, column=0, sticky="ew", pady=(10, 0))
         accent_row.columnconfigure(1, weight=1)
         accent_row.columnconfigure(3, weight=1)
         self.make_color_field(accent_row, "Primary", self.primary_color_var, 0, 0)
         self.make_color_field(accent_row, "Secondary", self.secondary_color_var, 0, 2)
 
         presets = ttk.Frame(card, style="Card.TFrame")
-        presets.grid(row=14, column=0, sticky="w", pady=(12, 0))
+        presets.grid(row=18, column=0, sticky="w", pady=(12, 0))
         ttk.Label(presets, text="Quick accents", style="Muted.TLabel").pack(side="left", padx=(0, 8))
         for label, color in ACCENT_COLORS.items():
             ttk.Button(
@@ -540,12 +598,64 @@ class SettingsApp:
         if selected and selected[1]:
             variable.set(selected[1])
 
+    def refresh_wallpaper_choices(self) -> None:
+        self.paths.wallpaper_dir.mkdir(parents=True, exist_ok=True)
+        wallpapers = []
+        for pattern in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
+            wallpapers.extend(sorted(self.paths.wallpaper_dir.glob(pattern)))
+            wallpapers.extend(sorted(self.paths.wallpaper_dir.glob(pattern.upper())))
+        values = [self.format_wallpaper_value(path) for path in sorted(set(wallpapers))]
+        current = self.wallpaper_var.get().strip()
+        if current and current not in values:
+            values.insert(0, current)
+        if self.wallpaper_combo is not None:
+            self.wallpaper_combo["values"] = values
+
+    def format_wallpaper_value(self, path: Path) -> str:
+        resolved = path.resolve()
+        repo_wallpaper_dir = repo_root() / "wallpapers"
+        if self.paths.root == repo_root() / "config" and resolved.parent == repo_wallpaper_dir.resolve():
+            return f"@HYPRCAT_CONFIG_DIR@/wallpapers/{resolved.name}"
+        return str(resolved)
+
+    def import_wallpaper(self) -> None:
+        source = filedialog.askopenfilename(
+            parent=self.root,
+            title="Import wallpaper",
+            filetypes=[
+                ("Images", "*.png *.jpg *.jpeg *.webp"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not source:
+            return
+
+        source_path = Path(source).expanduser().resolve()
+        self.paths.wallpaper_dir.mkdir(parents=True, exist_ok=True)
+        destination = self.paths.wallpaper_dir / source_path.name
+        if destination.exists() and destination.resolve() != source_path:
+            suffix = 1
+            while True:
+                candidate = destination.with_name(f"{destination.stem}-{suffix}{destination.suffix}")
+                if not candidate.exists():
+                    destination = candidate
+                    break
+                suffix += 1
+        if destination.resolve() != source_path:
+            shutil.copy2(source_path, destination)
+
+        self.wallpaper_var.set(self.format_wallpaper_value(destination))
+        self.refresh_wallpaper_choices()
+
     def load(self) -> None:
         hyprland_text = read_text(self.paths.hyprland)
+        hyprlock_text = read_text(self.paths.hyprlock)
         theme_text = read_text(self.paths.theme)
         apps_text = read_text(self.paths.apps)
         keybinds_text = read_text(self.paths.keybinds)
 
+        self.wallpaper_var.set(parse_wallpaper_path(hyprlock_text))
+        self.refresh_wallpaper_choices()
         self.animation_enabled_var.set(parse_animation_enabled(hyprland_text))
         self.animation_multiplier_var.set(parse_animation_multiplier(hyprland_text))
 
@@ -575,6 +685,9 @@ class SettingsApp:
             cursor_size = int(self.cursor_size_var.get())
             if cursor_size < 16 or cursor_size > 64:
                 raise ValueError("Cursor size must be between 16 and 64.")
+            wallpaper_value = self.wallpaper_var.get().strip()
+            if not wallpaper_value:
+                raise ValueError("Wallpaper cannot be empty.")
             for variable in (
                 self.active_start_var,
                 self.active_end_var,
@@ -591,6 +704,7 @@ class SettingsApp:
             return
 
         hyprland_text = read_text(self.paths.hyprland)
+        hyprlock_text = read_text(self.paths.hyprlock)
         theme_text = read_text(self.paths.theme)
         apps_text = read_text(self.paths.apps)
         keybinds_text = read_text(self.paths.keybinds)
@@ -614,6 +728,7 @@ class SettingsApp:
 
         theme_text = set_theme_color(theme_text, "$m3_primary", self.primary_color_var.get())
         theme_text = set_theme_color(theme_text, "$m3_secondary", self.secondary_color_var.get())
+        hyprlock_text = set_wallpaper_path(hyprlock_text, wallpaper_value)
 
         for label, variable_name in APP_VARIABLES.items():
             apps_text = set_variable(apps_text, variable_name, self.app_vars[label].get().strip())
@@ -621,14 +736,16 @@ class SettingsApp:
         keybinds_text = set_shortcuts(keybinds_text, shortcut_values, self.shortcut_targets)
 
         write_text(self.paths.hyprland, hyprland_text)
+        write_text(self.paths.hyprlock, hyprlock_text)
         write_text(self.paths.theme, theme_text)
         write_text(self.paths.apps, apps_text)
         write_text(self.paths.keybinds, keybinds_text)
 
         run_hyprctl("reload")
         run_hyprctl("setcursor", self.cursor_theme_var.get().strip(), str(cursor_size))
+        apply_wallpaper(self.paths.data_root)
 
-        self.status_var.set("Saved. Hyprland reload was requested.")
+        self.status_var.set("Saved. Hyprland reload and wallpaper apply were requested.")
         messagebox.showinfo("Saved", "Settings saved successfully.", parent=self.root)
 
 

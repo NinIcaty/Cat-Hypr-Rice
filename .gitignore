@@ -1,2 +1,12 @@
+.idea/
+.venv/
 __pycache__/
 *.pyc
+*.pkg.tar.zst
+*.BUILDINFO
+*.MTREE
+*.PKGINFO
+pkg/
+src/
+Cat-Hypr-Rice/
+main/

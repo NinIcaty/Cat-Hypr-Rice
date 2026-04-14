@@ -24,24 +24,26 @@ TEXT_SUFFIXES = {
 
 
 def default_data_dir() -> Path:
-    env = os.environ.get("PYPRLAND_DATA_DIR")
+    env = os.environ.get("HYPRCAT_DATA_DIR") or os.environ.get("PYPRLAND_DATA_DIR")
     if env:
         return Path(env).expanduser()
     return Path(__file__).resolve().parents[1]
 
 
 def default_config_dir() -> Path:
-    env = os.environ.get("PYPRLAND_CONFIG_DIR")
+    env = os.environ.get("HYPRCAT_CONFIG_DIR") or os.environ.get("PYPRLAND_CONFIG_DIR")
     if env:
         return Path(env).expanduser()
     xdg = os.environ.get("XDG_CONFIG_HOME")
     root = Path(xdg).expanduser() if xdg else Path.home() / ".config"
-    return root / "pyprland"
+    return root / "hyprcat"
 
 
 def render_template(content: str, config_dir: Path, data_dir: Path) -> str:
     return (
-        content.replace("@PYPRLAND_CONFIG_DIR@", str(config_dir))
+        content.replace("@HYPRCAT_CONFIG_DIR@", str(config_dir))
+        .replace("@HYPRCAT_DATA_DIR@", str(data_dir))
+        .replace("@PYPRLAND_CONFIG_DIR@", str(config_dir))
         .replace("@PYPRLAND_DATA_DIR@", str(data_dir))
     )
 
@@ -74,7 +76,7 @@ def bootstrap(data_dir: Path, config_dir: Path, force: bool) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Bootstrap the Pyprland user config.")
+    parser = argparse.ArgumentParser(description="Bootstrap the Hyprcat user config.")
     parser.add_argument("--data-dir", type=Path, default=default_data_dir())
     parser.add_argument("--config-dir", type=Path, default=default_config_dir())
     parser.add_argument("--force", action="store_true", help="overwrite existing user config files")

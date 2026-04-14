@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DATA_DIR="${PYPRLAND_DATA_DIR:-/usr/share/pyprland-desktop}"
-CONFIG_DIR="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
+DATA_DIR="${HYPRCAT_DATA_DIR:-${PYPRLAND_DATA_DIR:-/usr/share/hyprcat}}"
+CONFIG_DIR="${HYPRCAT_CONFIG_DIR:-${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hyprcat}}"
 
+export HYPRCAT_DATA_DIR="$DATA_DIR"
+export HYPRCAT_CONFIG_DIR="$CONFIG_DIR"
 export PYPRLAND_DATA_DIR="$DATA_DIR"
 export PYPRLAND_CONFIG_DIR="$CONFIG_DIR"
 

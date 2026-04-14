@@ -1,6 +1,0 @@
-[Desktop Entry]
-Name=Pyprland
-Comment=Material 3 inspired standalone Hyprland desktop session
-Exec=/usr/bin/pyprland-session
-Type=Application
-DesktopNames=Pyprland

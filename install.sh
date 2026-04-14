@@ -2,37 +2,45 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_DIR="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
+CONFIG_DIR="${HYPRCAT_CONFIG_DIR:-${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hyprcat}}"
 BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 APP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+WAYLAND_SESSION_DIR="/usr/share/wayland-sessions"
 
 mkdir -p "$BIN_DIR" "$APP_DIR"
 
-export PYPRLAND_DATA_DIR="$PROJECT_DIR"
-export PYPRLAND_CONFIG_DIR="$CONFIG_DIR"
+export HYPRCAT_DATA_DIR="$PROJECT_DIR"
+export HYPRCAT_CONFIG_DIR="$CONFIG_DIR"
 
 python3 "$PROJECT_DIR/scripts/bootstrap_config.py" --data-dir "$PROJECT_DIR" --config-dir "$CONFIG_DIR"
 
-cat > "$BIN_DIR/pyprland-session" <<EOF
+cat > "$BIN_DIR/hyprcat-session" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-export PYPRLAND_DATA_DIR="$PROJECT_DIR"
-export PYPRLAND_CONFIG_DIR="$CONFIG_DIR"
-exec "$PROJECT_DIR/bin/pyprland-session"
+export HYPRCAT_DATA_DIR="$PROJECT_DIR"
+export HYPRCAT_CONFIG_DIR="$CONFIG_DIR"
+exec "$PROJECT_DIR/bin/hyprcat-session"
 EOF
 
-cat > "$BIN_DIR/pyprland-settings" <<EOF
+cat > "$BIN_DIR/hyprcat-settings" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-export PYPRLAND_DATA_DIR="$PROJECT_DIR"
-export PYPRLAND_CONFIG_DIR="$CONFIG_DIR"
-exec "$PROJECT_DIR/bin/pyprland-settings"
+export HYPRCAT_DATA_DIR="$PROJECT_DIR"
+export HYPRCAT_CONFIG_DIR="$CONFIG_DIR"
+exec "$PROJECT_DIR/bin/hyprcat-settings"
 EOF
 
-chmod +x "$BIN_DIR/pyprland-session" "$BIN_DIR/pyprland-settings"
-install -m644 "$PROJECT_DIR/packaging/pyprland-settings.desktop" "$APP_DIR/pyprland-settings.desktop"
+chmod +x "$BIN_DIR/hyprcat-session" "$BIN_DIR/hyprcat-settings"
+install -m644 "$PROJECT_DIR/packaging/hyprcat-settings.desktop" "$APP_DIR/hyprcat-settings.desktop"
 
-printf 'Pyprland config was installed to %s\n' "$CONFIG_DIR"
+if [[ -w "$WAYLAND_SESSION_DIR" ]]; then
+  install -Dm644 "$PROJECT_DIR/packaging/hyprcat.desktop" "$WAYLAND_SESSION_DIR/hyprcat.desktop"
+  printf 'Wayland session entry was installed to %s\n' "$WAYLAND_SESSION_DIR/hyprcat.desktop"
+else
+  printf 'Skipping %s install because it is not writable.\n' "$WAYLAND_SESSION_DIR"
+  printf 'Install the package system-wide, or rerun this script with privileges, to make Hyprcat show up in SDDM.\n'
+fi
+
+printf 'Hyprcat config was installed to %s\n' "$CONFIG_DIR"
 printf 'Local launchers were installed to %s\n' "$BIN_DIR"
-printf 'Open the settings app with: %s\n' "$BIN_DIR/pyprland-settings"
-printf '\nFor a display-manager session entry, install the AUR package so the wayland session file is placed in /usr/share/wayland-sessions.\n'
+printf 'Open the settings app with: %s\n' "$BIN_DIR/hyprcat-settings"

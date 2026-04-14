@@ -1,6 +1,6 @@
-pkgbase = pyprland-desktop-git
+pkgbase = hyprcat
 	pkgdesc = Material 3 inspired standalone Hyprland desktop session with a settings app
-	pkgver = r3.gcc18c30
+	pkgver = r5.g9931aed
 	pkgrel = 1
 	url = https://github.com/NinIcaty/Cat-Hypr-Rice
 	arch = x86_64
@@ -23,9 +23,9 @@ pkgbase = pyprland-desktop-git
 	optdepends = hyprshot: screenshot shortcuts
 	optdepends = nautilus: default file manager command
 	optdepends = ttf-jetbrains-mono-nerd: recommended font
-	provides = pyprland-desktop
-	conflicts = pyprland-desktop
+	provides = hyprcat
+	conflicts = hyprcat-git
 	source = git+https://github.com/NinIcaty/Cat-Hypr-Rice.git
 	sha256sums = SKIP
 
-pkgname = pyprland-desktop-git
+pkgname = hyprcat

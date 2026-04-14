@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_ROOT="${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/pyprland}"
+CONFIG_ROOT="${HYPRCAT_CONFIG_DIR:-${PYPRLAND_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hyprcat}}"
 WALLPAPER_DIR="$CONFIG_ROOT/wallpapers"
+LOCK_CONF="$CONFIG_ROOT/hypr/hyprlock.conf"
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
-TMP_CONF="$RUNTIME_DIR/pyprland-hyprpaper.conf"
+TMP_CONF="$RUNTIME_DIR/hyprcat-hyprpaper.conf"
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
 find_wallpaper() {
+  local configured=""
+
+  if [ -f "$LOCK_CONF" ]; then
+    configured="$(awk -F'= ' '/^[[:space:]]*path[[:space:]]*=/ {print $2; exit}' "$LOCK_CONF")"
+    configured="${configured//@HYPRCAT_CONFIG_DIR@/$CONFIG_ROOT}"
+    configured="${configured//@PYPRLAND_CONFIG_DIR@/$CONFIG_ROOT}"
+    configured="${configured//@HYPRCAT_DATA_DIR@/${HYPRCAT_DATA_DIR:-}}"
+    configured="${configured//@PYPRLAND_DATA_DIR@/${PYPRLAND_DATA_DIR:-}}"
+    if [ -n "$configured" ] && [ -f "$configured" ]; then
+      printf '%s\n' "$configured"
+      return 0
+    fi
+  fi
+
   find "$WALLPAPER_DIR" -maxdepth 1 -type f \( \
     -iname '*.jpg' -o \
     -iname '*.jpeg' -o \

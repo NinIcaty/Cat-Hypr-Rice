@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Hyprcat Settings
+Comment=Configure the Hyprcat desktop session
+Exec=hyprcat-settings
+Terminal=false
+Type=Application
+Categories=Settings;DesktopSettings;

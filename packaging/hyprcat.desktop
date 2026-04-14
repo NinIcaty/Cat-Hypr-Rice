@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Hyprcat
+Comment=Material 3 inspired standalone Hyprland desktop session
+Exec=/usr/bin/hyprcat-session
+TryExec=/usr/bin/hyprcat-session
+Type=Application
+DesktopNames=Hyprcat
+Keywords=tiling;wayland;compositor;
