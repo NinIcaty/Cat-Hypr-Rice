@@ -1,6 +1,6 @@
 
 pkgname=hyprcat
-pkgver=r6.g6d969c7
+pkgver=r7.g57ae321
 pkgrel=1
 pkgdesc="Material 3 inspired standalone Hyprland desktop session with a settings app"
 arch=('x86_64')
@@ -45,7 +45,14 @@ pkgver() {
   local source_dir
   source_dir="$(_source_dir)"
   cd "$source_dir"
-  printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+  local version
+  version="$(printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)")"
+
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    version+=".dirty$(date +%Y%m%d%H%M%S)"
+  fi
+
+  printf '%s' "$version"
 }
 
 package() {
