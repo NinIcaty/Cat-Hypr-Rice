@@ -1,10 +1,11 @@
+
 pkgname=hyprcat
-pkgver=r5.g9931aed
+pkgver=r6.g6d969c7
 pkgrel=1
 pkgdesc="Material 3 inspired standalone Hyprland desktop session with a settings app"
 arch=('x86_64')
 url='https://github.com/NinIcaty/Cat-Hypr-Rice'
-license=('custom')
+license=('GPL 3.0')
 depends=(
   'gtk3'
   'hyprland'

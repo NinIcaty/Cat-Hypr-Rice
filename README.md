@@ -7,7 +7,7 @@ Hyprcat is a standalone Hyprland desktop session with a Material 3 style, bundle
 - a dedicated `Hyprcat` Wayland session entry
 - a first-run config bootstrap into `~/.config/hyprcat`
 - `hyprpaper`, `swaync`, `waybar`, `rofi`, and optional `anyrun` integration
-- a Tk settings app for wallpaper, animations, cursor, window highlight, shortcuts, and default app commands
+- a Tk settings app for wallpaper, animations, brightness, cursor, window highlight, shortcuts, and default app commands
 
 ## Package layout
 
@@ -62,6 +62,7 @@ Or from the local checkout wrapper:
 The settings app can change:
 
 - animation speed and animation enable or disable
+- screen brightness when `brightnessctl` is installed
 - wallpaper selection and wallpaper import
 - cursor theme and cursor size
 - active window highlight colors

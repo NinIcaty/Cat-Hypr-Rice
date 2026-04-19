@@ -74,8 +74,7 @@ wait_for_monitors() {
 }
 
 if ! require_cmd hyprctl || ! require_cmd hyprpaper; then
-  printf 'hyprpaper: hyprctl and hyprpaper must be installed\n' >&2
-  exit 1
+  exit 0
 fi
 
 WALLPAPER="$(find_wallpaper || true)"
@@ -86,8 +85,7 @@ fi
 
 MONITORS="$(wait_for_monitors || true)"
 if [ -z "${MONITORS:-}" ]; then
-  printf 'hyprpaper: no active monitors reported by hyprctl after waiting for startup\n' >&2
-  exit 1
+  exit 0
 fi
 
 {

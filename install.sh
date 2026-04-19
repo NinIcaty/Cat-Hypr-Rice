@@ -32,6 +32,13 @@ EOF
 
 chmod +x "$BIN_DIR/hyprcat-session" "$BIN_DIR/hyprcat-settings"
 install -m644 "$PROJECT_DIR/packaging/hyprcat-settings.desktop" "$APP_DIR/hyprcat-settings.desktop"
+python3 - <<PY
+from pathlib import Path
+
+desktop = Path(${APP_DIR@Q}) / "hyprcat-settings.desktop"
+text = desktop.read_text(encoding="utf-8")
+desktop.write_text(text.replace("Exec=hyprcat-settings", f"Exec={Path(${BIN_DIR@Q}) / 'hyprcat-settings'}"), encoding="utf-8")
+PY
 
 if [[ -w "$WAYLAND_SESSION_DIR" ]]; then
   install -Dm644 "$PROJECT_DIR/packaging/hyprcat.desktop" "$WAYLAND_SESSION_DIR/hyprcat.desktop"

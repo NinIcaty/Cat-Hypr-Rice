@@ -67,6 +67,7 @@ def build_shortcut_targets(config_root: Path) -> dict[str, tuple[str, str, str]]
         "Open terminal": ("bind", "exec", "$terminal"),
         "Open file manager": ("bind", "exec", "$fileManager"),
         "Open app launcher": ("bind", "exec", "$menu"),
+        "Open window switcher": ("bind", "exec", "rofi -show window"),
         "Open quick runner": ("bind", "exec", "$quickRunner"),
         "Close active window": ("bind", "killactive", ""),
         "Toggle floating": ("bind", "togglefloating", ""),
@@ -367,14 +368,47 @@ def apply_wallpaper(data_root: Path) -> None:
     subprocess.run([str(launcher)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def brightnessctl_available() -> bool:
+    return shutil.which("brightnessctl") is not None
+
+
+def read_brightness_percent() -> int | None:
+    if not brightnessctl_available():
+        return None
+    result = subprocess.run(
+        ["brightnessctl", "-m"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    match = re.search(r"(\d+)%", result.stdout)
+    if not match:
+        return None
+    return max(1, min(100, int(match.group(1))))
+
+
+def apply_brightness_percent(value: int) -> bool:
+    if not brightnessctl_available():
+        return False
+    result = subprocess.run(
+        ["brightnessctl", "set", f"{max(1, min(100, value))}%"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
 class SettingsApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.paths = detect_config_paths()
         self.shortcut_targets = build_shortcut_targets(self.paths.root)
         self.root.title("Hyprcat Settings")
-        self.root.geometry("980x720")
-        self.root.minsize(880, 640)
+        self.root.geometry("1100x820")
+        self.root.minsize(760, 640)
         self.root.configure(bg="#111318")
 
         self.status_var = tk.StringVar()
@@ -384,6 +418,9 @@ class SettingsApp:
 
         self.animation_enabled_var = tk.BooleanVar()
         self.animation_multiplier_var = tk.DoubleVar()
+        self.brightness_var = tk.DoubleVar()
+        self.brightness_value_var = tk.StringVar(value="Unavailable")
+        self.brightness_status_var = tk.StringVar()
         self.wallpaper_var = tk.StringVar()
         self.cursor_theme_var = tk.StringVar()
         self.cursor_size_var = tk.IntVar()
@@ -394,9 +431,15 @@ class SettingsApp:
         self.secondary_color_var = tk.StringVar()
         self.app_vars = {label: tk.StringVar() for label in APP_VARIABLES}
         self.shortcut_vars = {label: tk.StringVar() for label in self.shortcut_targets}
+        self.main_mod_var = tk.StringVar()
+        self.shift_mod_var = tk.StringVar()
         self.wallpaper_combo: ttk.Combobox | None = None
+        self.brightness_scale: ttk.Scale | None = None
+
+        self.brightness_var.trace_add("write", self.on_brightness_change)
 
         self.build_ui()
+        self.bind_shortcuts()
         self.load()
 
     def build_ui(self) -> None:
@@ -407,13 +450,21 @@ class SettingsApp:
 
         header = ttk.Frame(container, style="Card.TFrame", padding=18)
         header.pack(fill="x")
-        ttk.Label(header, text="Hyprcat Settings", style="Title.TLabel").pack(anchor="w")
+        header.columnconfigure(0, weight=1)
+        header_info = ttk.Frame(header, style="Card.TFrame")
+        header_info.grid(row=0, column=0, sticky="w")
+        ttk.Label(header_info, text="Hyprcat Settings", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
-            header,
+            header_info,
             text="Tweak the Material 3 Hyprland theme without editing config files by hand.",
             style="Body.TLabel",
         ).pack(anchor="w", pady=(6, 0))
-        ttk.Label(header, textvariable=self.config_location_var, style="Muted.TLabel").pack(anchor="w", pady=(8, 0))
+        ttk.Label(header_info, textvariable=self.config_location_var, style="Muted.TLabel").pack(anchor="w", pady=(8, 0))
+
+        header_actions = ttk.Frame(header, style="Card.TFrame")
+        header_actions.grid(row=0, column=1, sticky="ne", padx=(16, 0))
+        ttk.Button(header_actions, text="Reload", command=self.load, style="Secondary.TButton").pack(side="left")
+        ttk.Button(header_actions, text="Save and Apply", command=self.save, style="Primary.TButton").pack(side="left", padx=(10, 0))
 
         notebook = ttk.Notebook(container)
         notebook.pack(fill="both", expand=True, pady=16)
@@ -430,11 +481,20 @@ class SettingsApp:
         self.build_apps_tab(apps_tab)
         self.build_shortcuts_tab(shortcuts_tab)
 
-        footer = ttk.Frame(container, style="App.TFrame")
+        footer = ttk.Frame(container, style="Card.TFrame", padding=(18, 14))
         footer.pack(fill="x", pady=(6, 0))
-        ttk.Label(footer, textvariable=self.status_var, style="Muted.TLabel").pack(side="left")
-        ttk.Button(footer, text="Reload", command=self.load, style="Secondary.TButton").pack(side="right")
-        ttk.Button(footer, text="Save and Apply", command=self.save, style="Primary.TButton").pack(side="right", padx=(0, 10))
+        footer.columnconfigure(0, weight=1)
+        ttk.Label(
+            footer,
+            textvariable=self.status_var,
+            style="Muted.TLabel",
+            wraplength=900,
+            justify="left",
+        ).grid(row=0, column=0, sticky="w")
+        footer_actions = ttk.Frame(footer, style="Card.TFrame")
+        footer_actions.grid(row=0, column=1, sticky="e", padx=(16, 0))
+        ttk.Button(footer_actions, text="Reload", command=self.load, style="Secondary.TButton").pack(side="left")
+        ttk.Button(footer_actions, text="Save and Apply", command=self.save, style="Primary.TButton").pack(side="left", padx=(10, 0))
 
     def configure_style(self) -> None:
         style = ttk.Style(self.root)
@@ -445,7 +505,7 @@ class SettingsApp:
         style.configure("Title.TLabel", background="#181c23", foreground="#f2f4f8", font=("TkDefaultFont", 20, "bold"))
         style.configure("Section.TLabel", background="#181c23", foreground="#f2f4f8", font=("TkDefaultFont", 12, "bold"))
         style.configure("Body.TLabel", background="#181c23", foreground="#d6dae4", font=("TkDefaultFont", 10))
-        style.configure("Muted.TLabel", background="#111318", foreground="#98a1b3", font=("TkDefaultFont", 9))
+        style.configure("Muted.TLabel", background="#181c23", foreground="#98a1b3", font=("TkDefaultFont", 9))
         style.configure("Field.TLabel", background="#181c23", foreground="#e6eaf2", font=("TkDefaultFont", 10))
         style.configure("Primary.TButton", padding=(14, 8), background="#7dd3c3", foreground="#0d1117")
         style.map("Primary.TButton", background=[("active", "#92e3d5")])
@@ -457,6 +517,10 @@ class SettingsApp:
         style.configure("TCheckbutton", background="#181c23", foreground="#e6eaf2")
         style.configure("TEntry", fieldbackground="#0f131a", foreground="#f2f4f8", insertcolor="#f2f4f8")
         style.configure("TScale", background="#181c23")
+
+    def bind_shortcuts(self) -> None:
+        self.root.bind_all("<Control-s>", self.on_save_shortcut, add="+")
+        self.root.bind_all("<Control-S>", self.on_save_shortcut, add="+")
 
     def build_appearance_tab(self, parent: ttk.Frame) -> None:
         card = ttk.Frame(parent, style="Card.TFrame", padding=18)
@@ -500,38 +564,49 @@ class SettingsApp:
 
         ttk.Separator(card, orient="horizontal").grid(row=9, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Cursor", style="Section.TLabel").grid(row=10, column=0, sticky="w")
+        ttk.Label(card, text="Brightness", style="Section.TLabel").grid(row=10, column=0, sticky="w")
+        brightness_row = ttk.Frame(card, style="Card.TFrame")
+        brightness_row.grid(row=11, column=0, sticky="ew", pady=(10, 0))
+        brightness_row.columnconfigure(0, weight=1)
+        self.brightness_scale = ttk.Scale(brightness_row, from_=1, to=100, variable=self.brightness_var, orient="horizontal")
+        self.brightness_scale.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        ttk.Label(brightness_row, textvariable=self.brightness_value_var, style="Field.TLabel", width=8).grid(row=0, column=1, sticky="e")
+        ttk.Label(card, textvariable=self.brightness_status_var, style="Muted.TLabel").grid(row=12, column=0, sticky="w", pady=(8, 0))
+
+        ttk.Separator(card, orient="horizontal").grid(row=13, column=0, sticky="ew", pady=18)
+
+        ttk.Label(card, text="Cursor", style="Section.TLabel").grid(row=14, column=0, sticky="w")
         cursor_grid = ttk.Frame(card, style="Card.TFrame")
-        cursor_grid.grid(row=11, column=0, sticky="ew", pady=(10, 0))
+        cursor_grid.grid(row=15, column=0, sticky="ew", pady=(10, 0))
         cursor_grid.columnconfigure(1, weight=1)
         ttk.Label(cursor_grid, text="Theme", style="Field.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 12))
         ttk.Entry(cursor_grid, textvariable=self.cursor_theme_var).grid(row=0, column=1, sticky="ew")
         ttk.Label(cursor_grid, text="Size", style="Field.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=(10, 0))
         ttk.Spinbox(cursor_grid, from_=16, to=64, textvariable=self.cursor_size_var, increment=1).grid(row=1, column=1, sticky="w", pady=(10, 0))
 
-        ttk.Separator(card, orient="horizontal").grid(row=12, column=0, sticky="ew", pady=18)
+        ttk.Separator(card, orient="horizontal").grid(row=16, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Window Highlight", style="Section.TLabel").grid(row=13, column=0, sticky="w")
+        ttk.Label(card, text="Window Highlight", style="Section.TLabel").grid(row=17, column=0, sticky="w")
         colors = ttk.Frame(card, style="Card.TFrame")
-        colors.grid(row=14, column=0, sticky="ew", pady=(10, 0))
+        colors.grid(row=18, column=0, sticky="ew", pady=(10, 0))
         colors.columnconfigure(1, weight=1)
         colors.columnconfigure(3, weight=1)
         self.make_color_field(colors, "Active start", self.active_start_var, 0, 0)
         self.make_color_field(colors, "Active end", self.active_end_var, 1, 0)
         self.make_color_field(colors, "Inactive", self.inactive_border_var, 2, 0)
 
-        ttk.Separator(card, orient="horizontal").grid(row=15, column=0, sticky="ew", pady=18)
+        ttk.Separator(card, orient="horizontal").grid(row=19, column=0, sticky="ew", pady=18)
 
-        ttk.Label(card, text="Theme Accent", style="Section.TLabel").grid(row=16, column=0, sticky="w")
+        ttk.Label(card, text="Theme Accent", style="Section.TLabel").grid(row=20, column=0, sticky="w")
         accent_row = ttk.Frame(card, style="Card.TFrame")
-        accent_row.grid(row=17, column=0, sticky="ew", pady=(10, 0))
+        accent_row.grid(row=21, column=0, sticky="ew", pady=(10, 0))
         accent_row.columnconfigure(1, weight=1)
         accent_row.columnconfigure(3, weight=1)
         self.make_color_field(accent_row, "Primary", self.primary_color_var, 0, 0)
         self.make_color_field(accent_row, "Secondary", self.secondary_color_var, 0, 2)
 
         presets = ttk.Frame(card, style="Card.TFrame")
-        presets.grid(row=18, column=0, sticky="w", pady=(12, 0))
+        presets.grid(row=22, column=0, sticky="w", pady=(12, 0))
         ttk.Label(presets, text="Quick accents", style="Muted.TLabel").pack(side="left", padx=(0, 8))
         for label, color in ACCENT_COLORS.items():
             ttk.Button(
@@ -570,6 +645,15 @@ class SettingsApp:
             style="Muted.TLabel",
         ).pack(anchor="w", pady=(6, 14))
 
+        modifier_row = ttk.Frame(card, style="Card.TFrame")
+        modifier_row.pack(fill="x", pady=(0, 18))
+        modifier_row.columnconfigure(1, weight=1)
+        modifier_row.columnconfigure(3, weight=1)
+        ttk.Label(modifier_row, text="Main modifier", style="Field.TLabel", width=20).grid(row=0, column=0, sticky="w", padx=(0, 12))
+        ttk.Entry(modifier_row, textvariable=self.main_mod_var).grid(row=0, column=1, sticky="ew", padx=(0, 16))
+        ttk.Label(modifier_row, text="Shift modifier", style="Field.TLabel", width=20).grid(row=0, column=2, sticky="w", padx=(0, 12))
+        ttk.Entry(modifier_row, textvariable=self.shift_mod_var).grid(row=0, column=3, sticky="ew")
+
         for label, variable in self.shortcut_vars.items():
             row = ttk.Frame(card, style="Card.TFrame")
             row.pack(fill="x", pady=(0, 12))
@@ -592,6 +676,14 @@ class SettingsApp:
         self.primary_color_var.set(color)
         self.secondary_color_var.set(color)
         self.active_end_var.set(color)
+
+    def on_brightness_change(self, *_args: object) -> None:
+        value = int(round(self.brightness_var.get()))
+        self.brightness_value_var.set(f"{value}%")
+
+    def on_save_shortcut(self, _event: tk.Event[tk.Misc]) -> str:
+        self.save()
+        return "break"
 
     def pick_color(self, variable: tk.StringVar) -> None:
         selected = colorchooser.askcolor(color=variable.get() or "#89dceb", parent=self.root)
@@ -658,6 +750,18 @@ class SettingsApp:
         self.refresh_wallpaper_choices()
         self.animation_enabled_var.set(parse_animation_enabled(hyprland_text))
         self.animation_multiplier_var.set(parse_animation_multiplier(hyprland_text))
+        current_brightness = read_brightness_percent()
+        if current_brightness is None:
+            self.brightness_var.set(50)
+            self.brightness_value_var.set("Unavailable")
+            self.brightness_status_var.set("Install brightnessctl to change display brightness from this app.")
+            if self.brightness_scale is not None:
+                self.brightness_scale.state(["disabled"])
+        else:
+            self.brightness_var.set(current_brightness)
+            self.brightness_status_var.set("Brightness is applied to the current session when you save.")
+            if self.brightness_scale is not None:
+                self.brightness_scale.state(["!disabled"])
 
         cursor_theme, cursor_size = parse_cursor(hyprland_text)
         self.cursor_theme_var.set(cursor_theme)
@@ -674,6 +778,9 @@ class SettingsApp:
         for label, variable_name in APP_VARIABLES.items():
             self.app_vars[label].set(parse_variable(apps_text, variable_name))
 
+        self.main_mod_var.set(parse_variable(keybinds_text, "$mainMod"))
+        self.shift_mod_var.set(parse_variable(keybinds_text, "$shiftMod"))
+
         shortcuts = parse_shortcuts(keybinds_text, self.shortcut_targets)
         for label, variable in self.shortcut_vars.items():
             variable.set(shortcuts.get(label, ""))
@@ -688,6 +795,10 @@ class SettingsApp:
             wallpaper_value = self.wallpaper_var.get().strip()
             if not wallpaper_value:
                 raise ValueError("Wallpaper cannot be empty.")
+            if not self.main_mod_var.get().strip():
+                raise ValueError("Main modifier cannot be empty.")
+            if not self.shift_mod_var.get().strip():
+                raise ValueError("Shift modifier cannot be empty.")
             for variable in (
                 self.active_start_var,
                 self.active_end_var,
@@ -733,6 +844,8 @@ class SettingsApp:
         for label, variable_name in APP_VARIABLES.items():
             apps_text = set_variable(apps_text, variable_name, self.app_vars[label].get().strip())
 
+        keybinds_text = set_variable(keybinds_text, "$mainMod", self.main_mod_var.get().strip())
+        keybinds_text = set_variable(keybinds_text, "$shiftMod", self.shift_mod_var.get().strip())
         keybinds_text = set_shortcuts(keybinds_text, shortcut_values, self.shortcut_targets)
 
         write_text(self.paths.hyprland, hyprland_text)
@@ -741,11 +854,22 @@ class SettingsApp:
         write_text(self.paths.apps, apps_text)
         write_text(self.paths.keybinds, keybinds_text)
 
+        brightness_applied = False
+        brightness_available = brightnessctl_available()
+        if brightness_available:
+            brightness_applied = apply_brightness_percent(int(round(self.brightness_var.get())))
+
         run_hyprctl("reload")
         run_hyprctl("setcursor", self.cursor_theme_var.get().strip(), str(cursor_size))
         apply_wallpaper(self.paths.data_root)
 
-        self.status_var.set("Saved. Hyprland reload and wallpaper apply were requested.")
+        if brightness_available and brightness_applied:
+            status_message = "Saved. Hyprland reload, wallpaper apply, and brightness update were requested."
+        elif brightness_available:
+            status_message = "Saved. Hyprland reload and wallpaper apply were requested, but brightness could not be updated."
+        else:
+            status_message = "Saved. Hyprland reload and wallpaper apply were requested."
+        self.status_var.set(status_message)
         messagebox.showinfo("Saved", "Settings saved successfully.", parent=self.root)
 
 

@@ -35,11 +35,13 @@ inputbar {
 }
 
 prompt {
+    background-color: transparent;
     text-color: @secondary;
     padding: 0 4px 0 0;
 }
 
 entry {
+    background-color: transparent;
     text-color: @fg;
     placeholder: "Run apps, commands, or nvim <file>";
     placeholder-color: @muted;
@@ -74,6 +76,7 @@ element-icon {
 }
 
 element-text {
+    background-color: transparent;
     text-color: inherit;
     vertical-align: 0.5;
 }
@@ -85,5 +88,6 @@ message {
 }
 
 textbox {
+    background-color: transparent;
     text-color: @muted;
 }
