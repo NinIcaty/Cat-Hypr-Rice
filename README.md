@@ -26,14 +26,6 @@ Hyprland --config ~/.config/hyprcat/hypr/hyprland.conf
 
 This keeps Hyprcat separate from a normal `~/.config/hypr/hyprland.conf`.
 
-## AUR
-
-This repo includes an AUR-ready `PKGBUILD` for `hyprcat`.
-
-For local testing from this checkout, `makepkg` packages the current working tree if the source files are present locally. That avoids depending on a pushed GitHub state just to test package changes.
-
-## Local install from checkout
-
 ```bash
 chmod +x install.sh
 ./install.sh
@@ -78,4 +70,3 @@ The settings app can change:
 ## Notes
 
 - Existing `pyprland` and `hypr-material3` config directories are still detected by the settings app as fallbacks.
-- `license=('custom')` is still a placeholder until you decide on the project license text.
